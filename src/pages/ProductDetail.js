@@ -1,134 +1,114 @@
 // src/pages/ProductDetail.js
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import './ProductDetail.css';
+import { useNavigate, useParams } from 'react-router-dom';
+// Assuming you have a CSS file for product pages
+import './ProductDetail.css'; 
+// Assuming sampleData exports an array of products
+import { products } from '../data/sampleData'; 
+import { useAuth } from '../context/AuthContext';
+
 
 const ProductDetail = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); // Now correctly used
+  const { isAuthenticated } = useAuth();
+  
   const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    const products = JSON.parse(localStorage.getItem('handloom_products') || '[]');
-    const foundProduct = products.find(p => p.id === parseInt(id));
-    setProduct(foundProduct);
-  }, [id]);
-
-  const addToCart = () => {
-    if (!product) return;
-
-    const cart = JSON.parse(localStorage.getItem('handloom_cart') || '[]');
-    const existingItem = cart.find(item => item.id === product.id);
-    
-    if (existingItem) {
-      existingItem.quantity += quantity;
+    // Mock Data Fetching Logic
+    const fetchedProduct = products.find(p => p.id === parseInt(id));
+    if (fetchedProduct) {
+      setProduct(fetchedProduct);
     } else {
-      cart.push({
-        ...product,
-        quantity: quantity
-      });
+      // Handle product not found
+      navigate('/products', { replace: true });
     }
-    
-    localStorage.setItem('handloom_cart', JSON.stringify(cart));
-    alert('Product added to cart!');
+    setLoading(false);
+  }, [id, navigate]); // Depend on id and navigate
+
+  const handleGoBack = () => {
+    navigate('/products');
   };
 
-  const addToWishlist = () => {
-    if (!product) return;
-
-    const wishlist = JSON.parse(localStorage.getItem('handloom_wishlist') || '[]');
-    const existingItem = wishlist.find(item => item.id === product.id);
-    
-    if (!existingItem) {
-      wishlist.push(product);
-      localStorage.setItem('handloom_wishlist', JSON.stringify(wishlist));
-      alert('Product added to wishlist!');
-    } else {
-      alert('Product already in wishlist!');
+  const handleAddToCart = () => {
+    if (!isAuthenticated) {
+        alert('Please log in to add items to your cart.');
+        navigate('/login');
+        return;
     }
+    // Implement actual cart logic here (e.g., dispatch context update)
+    console.log(`Added ${quantity} of product ${product.name} to cart.`);
+    alert(`Added ${quantity} x ${product.name} to your cart!`);
   };
 
+  if (loading) {
+    return <div className="loading-state">Loading Handloom Art...</div>;
+  }
+  
   if (!product) {
-    return (
-      <div className="product-detail">
-        <div className="container">
-          <p>Product not found.</p>
-          <Link to="/products" className="btn btn-primary">Back to Products</Link>
-        </div>
-      </div>
-    );
+      // This case is typically handled by the navigate in useEffect, 
+      // but serves as a quick fallback.
+      return null;
   }
 
   return (
-    <div className="product-detail">
-      <div className="container">
-        <nav className="breadcrumb">
-          <Link to="/">Home</Link> &gt; 
-          <Link to="/products">Products</Link> &gt; 
-          <span>{product.name}</span>
-        </nav>
+    <div className="product-detail-container">
+      <button onClick={handleGoBack} className="btn-back">
+        ⬅️ Back to Collection
+      </button>
 
-        <div className="product-detail-content">
-          <div className="product-image">
-            <img src={product.image} alt={product.name} />
-          </div>
+      <div className="product-detail-card">
+        <div className="product-image-section">
+          <img src={product.imageUrl || ''} alt={product.name} />
+          {/* Mock secondary images could go here */}
+        </div>
+
+        <div className="product-info-section">
+          <h1 className="product-title">{product.name}</h1>
           
-          <div className="product-info">
-            <h1>{product.name}</h1>
-            <p className="product-artisan">By {product.artisan}</p>
-            <p className="product-price">${product.price}</p>
-            <p className="product-description">{product.description}</p>
-            
-            <div className="product-specs">
-              <h3>Product Specifications</h3>
-              <div className="specs-grid">
-                <div className="spec">
-                  <strong>Materials:</strong> {product.materials}
-                </div>
-                <div className="spec">
-                  <strong>Dimensions:</strong> {product.dimensions}
-                </div>
-                <div className="spec">
-                  <strong>Category:</strong> {product.category}
-                </div>
-                <div className="spec">
-                  <strong>Stock:</strong> {product.stock} available
-                </div>
-              </div>
+          <p className="product-artisan">
+            Woven by: <strong>{product.artisan || 'Unknown Artisan'}</strong>
+          </p>
+
+          <p className="product-price">
+            Price: ${product.price.toFixed(2)}
+          </p>
+          
+          <div className="product-description">
+            <h3>The Story of the Weave:</h3>
+            <p>{product.description || 'A timeless piece handcrafted using traditional techniques, embodying the rich heritage of Indian textiles.'}</p>
+          </div>
+
+          <div className="product-attributes">
+             <p><strong>Material:</strong> {product.material || 'Silk/Cotton Blend'}</p>
+             <p><strong>Dimensions:</strong> {product.dimensions || '2m x 1m'}</p>
+          </div>
+
+          <div className="product-actions">
+            <div className="quantity-control">
+                <label htmlFor="quantity">Quantity:</label>
+                <input
+                    type="number"
+                    id="quantity"
+                    value={quantity}
+                    min="1"
+                    onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="quantity-input"
+                />
             </div>
             
-            <div className="purchase-section">
-              <div className="quantity-selector">
-                <label>Quantity:</label>
-                <select 
-                  value={quantity} 
-                  onChange={(e) => setQuantity(parseInt(e.target.value))}
-                >
-                  {[...Array(Math.min(product.stock, 10))].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {i + 1}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="action-buttons">
-                <button 
-                  onClick={addToCart}
-                  className="btn btn-primary btn-large"
-                  disabled={product.stock === 0}
-                >
-                  {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
-                </button>
-                <button 
-                  onClick={addToWishlist}
-                  className="btn btn-secondary"
-                >
-                  Add to Wishlist
-                </button>
-              </div>
-            </div>
+            <button 
+              onClick={handleAddToCart} 
+              className="btn-add-to-cart btn-primary"
+            >
+              Add to Cart 🛒
+            </button>
+            <button className="btn-wishlist btn-secondary">
+              Add to Wishlist ❤️
+            </button>
           </div>
         </div>
       </div>
